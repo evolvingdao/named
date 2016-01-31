@@ -1,20 +1,20 @@
 package io.github.evolvingdao.named.processor;
 
-import javax.lang.model.SourceVersion;
-import javax.lang.model.element.Element;
-
 import io.github.evolvingdao.named.annotation.DifferentKey;
 import io.github.evolvingdao.named.annotation.NotNamed;
 
-final class NamedInnerElement {
+import javax.lang.model.element.Element;
 
-	final Element element;
-	final String key;
+final class NamedInnerElement extends NamedElement {
 
-	NamedInnerElement(Element element) throws NotNamedInnerElementException, NamedElementProblem {
-		// Obtain the possible annotations
+	private final NamedOwnerElement owner;
+
+	NamedInnerElement(Element element, DifferentKey differentKeyAnnotation, NamedOwnerElement owner)
+			throws NotNamedInnerElementException, NamedElementProblem {
+		super(element, differentKeyAnnotation == null ? element.getSimpleName().toString() : differentKeyAnnotation
+				.value());
+
 		NotNamed notNamedAnnotation = element.getAnnotation(NotNamed.class);
-		DifferentKey differentKeyAnnotation = element.getAnnotation(DifferentKey.class);
 
 		// If the element has the two annotation, it is an error
 		if ((notNamedAnnotation != null) && (differentKeyAnnotation != null)) {
@@ -27,52 +27,12 @@ final class NamedInnerElement {
 			throw new NotNamedInnerElementException();
 		}
 
-		// Validate the key
-		String key = differentKeyAnnotation == null ? element.getSimpleName().toString() : differentKeyAnnotation.key();
-		if (!SourceVersion.isName(key)) {
-			throw new InvalidKeyProblem(element, key);
-		}
-
-		this.element = element;
-		this.key = key;
+		this.owner = owner;
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		if (this == obj) {
-			return true;
-		}
-		if (obj == null) {
-			return false;
-		}
-		if (this.getClass() != obj.getClass()) {
-			return false;
-		}
-		NamedInnerElement other = (NamedInnerElement) obj;
-		if (this.element == null) {
-			if (other.element != null) {
-				return false;
-			}
-		} else if (!this.element.equals(other.element)) {
-			return false;
-		}
-		if (this.key == null) {
-			if (other.key != null) {
-				return false;
-			}
-		} else if (!this.key.equals(other.key)) {
-			return false;
-		}
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = (prime * result) + ((this.element == null) ? 0 : this.element.hashCode());
-		result = (prime * result) + ((this.key == null) ? 0 : this.key.hashCode());
-		return result;
+	String getKey() {
+		return this.owner.getKey() + "." + this.key;
 	}
 
 }

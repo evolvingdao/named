@@ -1,8 +1,7 @@
 package io.github.evolvingdao.named.processor;
 
-import java.text.MessageFormat;
-
 import javax.lang.model.element.Element;
+import java.text.MessageFormat;
 
 abstract class NamedElementProblem extends Exception {
 

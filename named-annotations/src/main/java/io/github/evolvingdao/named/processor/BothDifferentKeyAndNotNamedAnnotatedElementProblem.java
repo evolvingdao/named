@@ -1,9 +1,9 @@
 package io.github.evolvingdao.named.processor;
 
-import javax.lang.model.element.Element;
-
 import io.github.evolvingdao.named.annotation.DifferentKey;
 import io.github.evolvingdao.named.annotation.NotNamed;
+
+import javax.lang.model.element.Element;
 
 final class BothDifferentKeyAndNotNamedAnnotatedElementProblem extends NamedElementProblem {
 

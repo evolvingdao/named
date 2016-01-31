@@ -1,9 +1,9 @@
 package io.github.evolvingdao.named.processor;
 
-import java.text.MessageFormat;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.function.Predicate;
+import io.github.evolvingdao.named.annotation.DifferentKey;
+import io.github.evolvingdao.named.annotation.Named;
+import io.github.evolvingdao.named.annotation.NotNamed;
+import io.github.evolvingdao.named.annotation.SuppressNamedWarnings;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Messager;
@@ -15,11 +15,10 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
-
-import io.github.evolvingdao.named.annotation.DifferentKey;
-import io.github.evolvingdao.named.annotation.Named;
-import io.github.evolvingdao.named.annotation.NotNamed;
-import io.github.evolvingdao.named.annotation.SuppressNamedWarnings;
+import java.text.MessageFormat;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Predicate;
 
 public final class NamedProcessor extends AbstractProcessor {
 
@@ -38,7 +37,7 @@ public final class NamedProcessor extends AbstractProcessor {
 
 		NOT_A_NAMED_INNER_ELEMENT = e -> {
 			Element enclosingElement = e.getEnclosingElement();
-			return enclosingElement == null ? true : enclosingElement.getAnnotation(Named.class) == null;
+			return enclosingElement == null || enclosingElement.getAnnotation(Named.class) == null;
 		};
 	}
 
@@ -71,10 +70,10 @@ public final class NamedProcessor extends AbstractProcessor {
 		// 1. NotNamed or DifferentKey annotated elements must belong to a Named annotated class.
 		// 2. SuppressNamedWarnings annotated elements must have the Named annotation too.
 		{
-			roundEnv.getElementsAnnotatedWith(NotNamed.class).stream().filter(NOT_A_NAMED_INNER_ELEMENT)
-					.forEach(this::errorNotANamedInnerElement);
-			roundEnv.getElementsAnnotatedWith(DifferentKey.class).stream().filter(NOT_A_NAMED_INNER_ELEMENT)
-					.forEach(this::errorNotANamedInnerElement);
+			roundEnv.getElementsAnnotatedWith(NotNamed.class).stream().filter(NOT_A_NAMED_INNER_ELEMENT).forEach
+					(this::errorNotANamedInnerElement);
+			roundEnv.getElementsAnnotatedWith(DifferentKey.class).stream().filter(NOT_A_NAMED_INNER_ELEMENT).forEach
+					(this::errorNotANamedInnerElement);
 			roundEnv.getElementsAnnotatedWith(SuppressNamedWarnings.class).stream().filter(NOT_A_NAMED_ELEMENT)
 					.forEach(this::errorNotANamedElement);
 		}
@@ -87,7 +86,7 @@ public final class NamedProcessor extends AbstractProcessor {
 	}
 
 	private void error(Element element, String message) {
-		this.messager.printMessage(Kind.ERROR, message, element);
+		this.message(Kind.ERROR, element, message);
 	}
 
 	private void error(Element element, String message, Object... params) {
@@ -106,16 +105,31 @@ public final class NamedProcessor extends AbstractProcessor {
 		this.error(element, "It is not an inner element of a type annotated with @{0}.", Named.class.getSimpleName());
 	}
 
+	private void message(Kind kind, Element element, String message) {
+		this.messager.printMessage(kind, message, element);
+	}
+
 	private void processNamedElement(Element element) {
 		try {
 			// Obtain the named element
-			NamedElement namedElement = new NamedElement(element);
+			NamedOwnerElement namedOwnerElement = new NamedOwnerElement(element, element.getAnnotation(Named.class));
 
 			// Register the problems associated with the inner elements
-			namedElement.innerElementsProblems.forEach(this::error);
+			namedOwnerElement.innerElementsProblems.forEach(this::error);
+
+			// Call the generator
+			NamedGenerator namedGenerator = new NamedGenerator(namedOwnerElement);
+			namedGenerator.process();
+
+			// Register the problems associated with the generation process
+			namedGenerator.problems.forEach(this::showProblem);
 		} catch (InvalidKeyProblem e) {
 			this.error(e);
 		}
+	}
+
+	private void showProblem(BundleProblem problem) {
+		this.message(problem.kind, problem.element, problem.message);
 	}
 
 }
